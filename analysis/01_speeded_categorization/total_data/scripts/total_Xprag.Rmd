@@ -1,0 +1,750 @@
+---
+title: "Everything"
+author: "morgan moyer"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE, warning=FALSE, echo=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2)
+library(lme4)
+library(lmerTest)
+library(multcomp) # not available for this version of R
+library(stringr)
+library(textstem)
+library(tidyverse)
+library(kableExtra)
+theme_set(theme_bw())
+library(ggrepel)
+cbPalette <- c("#56B4E9", "#D55E00", "#009E73","#999999", "#E69F00")
+this.dir <- dirname(rstudioapi::getSourceEditorContext()$path)
+setwd(this.dir)
+source("../../helpers.R")
+
+# v1 <- read_csv("../../01_verbs/exploratory_all_data/data/processed.csv")
+# v1["Category"] <- "Verbs"
+
+v <- read_csv("../../01_concreteness/01_verbs/data/processed.csv")
+v["Category"] <- "Verbs"
+v["Experiment"] <- "Ex1a: Conc-Abs (Verbs)"
+
+n <- read_csv("../../01_concreteness/02_nouns/data/processed.csv")
+n["Category"] <- "Nouns"
+n["Experiment"] <- "Ex1b: Conc-Abs (Nouns)"
+
+a <- read_csv("../../01_concreteness/03_adjectives/data/processed.csv")
+a["Category"] <- "Adjs"
+a["Experiment"] <- "Ex1c: Conc-Abs (Adjs)"
+
+a2 <- read_csv("../../06_soc-phys/00_pilot/data/processed.csv")
+a2["Category"] <- "Adjs"
+a2["Experiment"] <- "Ex2b: Phys-Soc (Verbs)"
+
+v2 <- read_csv("../../02_phys-psych/01_experiment/data/processed.csv")
+v2["Category"] <- "Verbs"
+v2["Experiment"] <- "Ex2a: Phys-Psych (Adjs)"
+
+
+n2 <- read_csv("../../04_animacy/data/processed.csv")
+n2["Category"] <- "Nouns"
+n2["Experiment"] <- "Ex3: Animacy (Nouns)"
+
+s <- read_csv("../../05_syntactic/01_experiment/data/processed.csv")
+s["Experiment"] <- "Ex4: Syntactic (N v. V)"
+
+
+
+d <- bind_rows(v,n,a,a2,v2,n2,s)
+
+```
+
+
+# Summary Stats
+```{r}
+agr <- d %>% 
+  group_by(Experiment,Task) %>% 
+  summarize(MeanAccuracy = mean(Accuracy),
+            SD = sd(Accuracy))
+print(agr)
+```
+
+# Start with Accuracy on Total
+
+```{r}
+agr <- d %>% 
+  group_by(Experiment,Task) %>% 
+  reframe(MeanAccuracy = mean(Accuracy), 
+          CILow = ci.low(Accuracy), 
+          CIHigh = ci.high(Accuracy)) %>%
+  mutate(YMin = MeanAccuracy - CILow, 
+         YMax = MeanAccuracy + CIHigh)
+
+
+agr$Task <- ifelse(agr$Task == "Valence", "Valence", "Conceptual")
+agr$Task <- factor(agr$Task, levels = c("Conceptual","Valence"))
+
+ggplot(data = agr, aes(x = Experiment, y = MeanAccuracy, fill = Task)) +
+  geom_bar(position = dodge, stat = "identity", color = "black", alpha = 0.4) + 
+  geom_errorbar(aes(ymin = YMin, ymax = YMax), width = 0.25, position = dodge) +
+  theme(
+    legend.position = "top",
+    legend.direction = "horizontal",
+    axis.title.x = element_text(size = 16),
+    axis.title.y = element_text(size = 16),
+    axis.text.x = element_text(size = 16, angle = 10, hjust = 1),
+    axis.text.y = element_text(size = 16),
+    legend.title = element_text(size = 16),
+    legend.text = element_text(size = 16)
+  )
+
+ggsave("../graphs/total_accuracy.pdf",width = 8, height = 4)
+```
+
+```{r}
+agr <- d %>% 
+  group_by(Experiment,Task) %>% 
+  reframe(MeanAccuracy = mean(Accuracy), 
+          CILow = ci.low(Accuracy), 
+          CIHigh = ci.high(Accuracy)) %>%
+  mutate(YMin = MeanAccuracy - CILow, 
+         YMax = MeanAccuracy + CIHigh)
+
+
+agr$Task <- ifelse(agr$Task == "Valence", "Valence", "Conceptual")
+agr$Task <- factor(agr$Task, levels = c("Conceptual","Valence"))
+
+ggplot(data = agr, aes(x = Experiment, y = MeanAccuracy, fill = Task)) +
+  geom_bar(position = dodge, stat = "identity", color = "black", alpha = 0.4) + 
+  geom_errorbar(aes(ymin = YMin, ymax = YMax), width = 0.25, position = dodge) +
+  theme(
+    legend.position = "top",
+    legend.direction = "horizontal",
+    axis.text.x = element_text(angle = 10, hjust = .5, margin = margin(t = 10)),
+    plot.margin = margin(10, 20, 20, 10)  # top, right, bottom, left (in pts)
+  )
+
+ggsave("../graphs/total_acc_paper2.jpg",width = 6, height = 3)
+```
+
+# Look at the most accurate for each category on EVERYTHING
+
+```{r}
+# Compute highest accuracy for Concrete, keeping top 10 words per Category
+concept_acc <- d %>% 
+  # filter(Experiment == "Ex1: Conc-Abs") %>% 
+  group_by(Experiment,Category, Word, Task) %>%
+  mutate(Task = ifelse(Task == "Valence", "Valence", "Conceptual"),
+          Task = factor(Task, levels = c("Conceptual","Valence"))) %>% 
+  summarize(MeanAccuracy = mean(Accuracy),
+            MeanReactionTime = mean(ReactionTime), .groups = "drop") %>% 
+  filter(Task == "Conceptual") %>%
+  select(Experiment,Category,Word, MeanAccuracy) %>%
+  rename(ConcreteAccuracy = MeanAccuracy) %>%
+  group_by(Experiment,Category) %>% 
+  slice_max(order_by = ConcreteAccuracy, n = 10)  # Get top 10 per category
+```
+
+```{r}
+print(concept_acc$Word)
+```
+
+```{r}
+agr <- d %>% 
+  mutate(Task = ifelse(Task == "Valence", "Valence", "Conceptual"),
+          Task = factor(Task, levels = c("Conceptual","Valence"))) %>% 
+  filter(Word %in% concept_acc$Word) %>% 
+  filter(Word != "obsess") %>% 
+  group_by(Word,Task) %>%
+  summarize(MeanAccuracy = mean(Accuracy),
+            MeanReactionTime = mean(ReactionTime))
+
+
+# print(agr)
+
+ggplot(agr, aes(x = MeanReactionTime, y = MeanAccuracy, color = Task)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +  # Separate lines for each Task
+  geom_text(aes(label = Word), vjust = -0.5, hjust = 1.5) +  # Task color inherited from ggplot()
+  theme(
+    legend.position = "top",
+    legend.direction = "horizontal",
+    axis.title.x = element_text(size = 10),      # x-axis title
+    axis.title.y = element_text(size = 10),      # y-axis title
+    axis.text.x = element_text(size = 8),       # x-axis tick labels
+    axis.text.y = element_text(size = 8),       # y-axis tick labels
+    legend.title = element_text(size = 10),
+    legend.text = element_text(size = 8)
+  )
+
+# ggsave("../graphs/total_accXrt2.pdf",width = 8, height = 4)
+ggsave("../graphs/total_accXrt_paper.jpg",width = 6, height = 3)
+
+
+```
+
+
+```{r}
+agr <- df.outliers.removed %>%
+    group_by(Experiment,Task,Word) %>%
+    summarize(MeanReactionTime = mean(ReactionTime), 
+              CILow = ci.low(ReactionTime), 
+              CIHigh = ci.high(ReactionTime)) %>%
+    mutate(YMin = MeanReactionTime - CILow, 
+           YMax = MeanReactionTime + CIHigh)
+
+agr$Task <- ifelse(agr$Task == "Valence", "Valence", "Conceptual")
+agr$Task <- factor(agr$Task, levels = c("Conceptual","Valence"))
+
+# Set dodge width to match violin grouping
+dodge_width <- 0.9
+
+ggplot(agr, aes(x = Experiment, y = MeanReactionTime, fill = Task)) + 
+  geom_violin(trim = FALSE, alpha = 0.4, position = position_dodge(width = dodge_width)) +
+
+  # Add mean point with matching dodge
+  stat_summary(fun = mean,
+               geom = "point",
+               shape = 23,
+               size = 3,
+               position = position_dodge(width = dodge_width)) +
+  
+  stat_summary(fun = median,
+                geom = "crossbar",
+                width = 0.3, 
+                linewidth = 0.2,
+                position = position_dodge(width = dodge_width)) +
+  
+  labs(y = "Mean Reaction Time", x = "Experiment") +
+  theme(text = element_text(family = "Helvetica")) +
+  # theme(axis.text.x = element_text(angle = 10, hjust = 1))
+  theme(
+    legend.position = "top",
+    legend.direction = "horizontal",
+    axis.text.x = element_text(angle = 10, hjust = .5, margin = margin(t = 10)),
+    plot.margin = margin(10, 20, 20, 10)  # top, right, bottom, left (in pts)
+
+  ) 
+
+
+
+ggsave("../graphs/total_rt_paper2.jpg",width = 6, height = 3)
+# ggsave("../graphs/exp1_paper.pdf",width = 8, height = 4)
+```
+
+
+
+## Model
+```{r}
+dcen <- d %>% 
+  filter(Word %in% concept_acc$Word) %>% 
+  # filter(Experiment == "Ex2: Conc-Abs") %>% 
+  mutate(Task = ifelse(Task == "Valence", "Valence", "Conceptual"),
+          Task = factor(Task, levels = c("Valence", "Conceptual"))) %>% 
+  mutate(Word = as.factor(Word),
+         ID.true = as.factor(ID.true),
+         Task = as.factor(Task),
+         Experiment = as.factor(Experiment),
+         cAccuracy = as.numeric(Accuracy)-mean(as.numeric(Accuracy)),
+         cTask = as.numeric(Task)-mean(as.numeric(Task)))
+
+m <- lmer(LogReactionTime ~ cAccuracy*cTask*Experiment + (1+cTask|Word) + (1+cTask|ID.true), data = dcen)
+summary(m)
+
+
+```
+
+
+# SocPhys and Syntax
+
+```{r}
+sub <- d %>% 
+  filter(Word %in% concept_acc$Word) %>% 
+  filter(Experiment %in% c("Ex2b: Phys-Soc","Ex4: Syntactic"))
+
+ggplot(sub, aes(ReactionTime, fill=Task)) +
+  geom_density(alpha = .5) +
+  facet_wrap(~Experiment)
+```
+
+
+```{r}
+
+conc <- sub %>%
+  filter(Word %in% concept_acc$Word) %>% 
+  filter(Experiment == "Ex2b: Phys-Soc") %>%
+  filter(Task == "SocPhys") %>% 
+  mutate(Response.n = as.numeric(factor(Response, levels = c("social", "physical"))) - 1) %>%
+  group_by(Word, ConcValCombo) %>%
+  summarize(PropPhysical = mean(Response.n), .groups = "drop")
+
+
+dodge = position_dodge(.9)
+ggplot(data=conc, aes(x=reorder(Word,PropPhysical),y=PropPhysical,fill=ConcValCombo)) +
+  geom_bar(position=dodge,stat="identity") +
+  theme(axis.text.x = element_text(angle = 30, hjust = 1))
+  # guides(fill = "none")
+```
+
+
+```{r}
+
+conc <- sub %>%
+  filter(Word %in% concept_acc$Word) %>% 
+  filter(Experiment == "Ex4: Syntactic") %>%
+  filter(Task == "Syntactic") %>% 
+  mutate(Response.n = as.numeric(factor(Response, levels = c("noun", "verb"))) - 1) %>%
+  group_by(Word, ConcValCombo) %>%
+  summarize(PropVerb = mean(Response.n), .groups = "drop")
+
+
+dodge = position_dodge(.9)
+ggplot(data=conc, aes(x=reorder(Word,PropVerb),y=PropVerb,fill=ConcValCombo)) +
+  geom_bar(position=dodge,stat="identity") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  # guides(fill = "none")
+```
+
+
+
+
+
+
+## by-itmes 
+
+```{r}
+agr <- d %>% 
+  filter(Word %in% concept_acc$Word) %>% 
+  mutate(Task = ifelse(Task == "Valence", "Valence", "Conceptual"),
+          Task = factor(Task, levels = c("Conceptual","Valence"))) %>% 
+  filter(Word != "obsess") %>% 
+  group_by(Word,Task,Experiment) %>% 
+  reframe(MeanAccuracy = mean(Accuracy), 
+          CILow = ci.low(Accuracy), 
+          CIHigh = ci.high(Accuracy)) %>%
+  mutate(YMin = MeanAccuracy - CILow, 
+         YMax = MeanAccuracy + CIHigh)
+# View(agr)
+
+dodge = position_dodge(.9)
+ggplot(data=agr, aes(x=Task,y=MeanAccuracy, alpha = Experiment, fill=Task)) +
+  geom_bar(position=dodge,stat="identity") + 
+  facet_wrap(~Word) +
+  geom_errorbar(aes(ymin=YMin,ymax=YMax),width=.25,position=position_dodge(0.9)) +
+  theme(legend.key.size = unit(0.3, "cm"),
+        legend.position = "top", # c(.5,1)
+        legend.direction = "horizontal",
+        legend.margin=margin(0,0,0,0),
+        legend.box.margin=margin(0,0,-5,-5),legend.spacing.y = unit(0.001, 'cm')) +
+    # scale_fill_manual(values=cbPalette) +
+    # scale_color_manual(values=cbPalette) +
+    scale_alpha_discrete(range = c(.5,1)) +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+# ggsave("../graphs/total_acc_exps.pdf",width = 12, height = 10)
+```
+
+```{r}
+agr <- d %>% 
+  filter(Word %in% concept_acc$Word) %>% 
+  mutate(Task = ifelse(Task == "Valence", "Valence", "Conceptual"),
+          Task = factor(Task, levels = c("Conceptual","Valence"))) %>% 
+  filter(Word != "obsess") %>% 
+  group_by(Word,Task,Experiment) %>% 
+  reframe(MeanReactionTime = mean(ReactionTime), 
+          CILow = ci.low(ReactionTime), 
+          CIHigh = ci.high(ReactionTime)) %>%
+  mutate(YMin = MeanReactionTime - CILow, 
+         YMax = MeanReactionTime + CIHigh)
+# View(agr)
+
+dodge = position_dodge(.9)
+ggplot(data=agr, aes(x=Task,y=MeanReactionTime, alpha = Experiment, fill=Task)) +
+  # geom_violin(trim=FALSE,alpha=.4) +
+  # geom_jitter(shape=16, position=position_jitter(0.2)) +
+  geom_bar(position=dodge,stat="identity") +
+  geom_errorbar(aes(ymin=YMin,ymax=YMax),width=.25,position=position_dodge(0.9)) +
+  facet_wrap(~Word) +
+  theme(legend.key.size = unit(0.3, "cm"),
+        legend.position = "top", # c(.5,1)
+        legend.direction = "horizontal",
+        legend.margin=margin(0,0,0,0),
+        legend.box.margin=margin(0,0,-5,-5),legend.spacing.y = unit(0.001, 'cm')) +
+    # scale_fill_manual(values=cbPalette) +
+    # scale_color_manual(values=cbPalette) +
+    scale_alpha_discrete(range = c(.5,1)) +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+# ggsave("../graphs/total_rt_exps.pdf",width = 12, height = 10)
+```
+
+```{r}
+agr <- df.outliers.removed %>%
+    group_by(Experiment,Task,Word) %>%
+    summarize(MeanReactionTime = mean(ReactionTime), 
+              CILow = ci.low(ReactionTime), 
+              CIHigh = ci.high(ReactionTime)) %>%
+    mutate(YMin = MeanReactionTime - CILow, 
+           YMax = MeanReactionTime + CIHigh)
+
+agr$Task <- ifelse(agr$Task == "Valence", "Valence", "Conceptual")
+agr$Task <- factor(agr$Task, levels = c("Conceptual","Valence"))
+
+# Set dodge width to match violin grouping
+dodge_width <- 0.9
+
+ggplot(agr, aes(x = Experiment, y = MeanReactionTime, fill = Task)) + 
+  geom_violin(trim = FALSE, alpha = 0.4, position = position_dodge(width = dodge_width)) +
+
+  # Add mean point with matching dodge
+  stat_summary(fun = mean,
+               geom = "point",
+               shape = 23,
+               size = 3,
+               position = position_dodge(width = dodge_width)) +
+  
+  stat_summary(fun = median,
+                geom = "crossbar",
+                width = 0.3, 
+                linewidth = 0.2,
+                position = position_dodge(width = dodge_width)) +
+  
+  labs(y = "Mean Reaction Time", x = "Experiment") +
+  theme(text = element_text(family = "Helvetica")) +
+  # theme(axis.text.x = element_text(angle = 10, hjust = 1))
+  theme(
+    legend.position = "top",
+    legend.direction = "horizontal",
+    axis.text.x = element_text(angle = 10, hjust = .5, margin = margin(t = 10)),
+    plot.margin = margin(10, 20, 20, 10)  # top, right, bottom, left (in pts)
+
+  ) 
+
+
+
+ggsave("../graphs/total_rt_paper2.jpg",width = 6, height = 3)
+# ggsave("../graphs/exp1_paper.pdf",width = 8, height = 4)
+```
+
+
+
+
+# Reaction Time
+
+
+
+
+```{r}
+# First remove inaccurate participants
+length(unique(d$ID.true))
+inacc.parts <- d %>% 
+  group_by(Experiment,ID.true,Task,Category) %>% 
+  summarise(MeanAccuracy = mean(Accuracy)) %>% 
+  filter(MeanAccuracy < .75)
+# How many participants have Accuracy < .75?
+length(unique(inacc.parts$ID.true))
+# Remove them
+d.inaccurate.removed <- d %>% 
+  anti_join(inacc.parts, by = "ID.true")
+# Sanity check
+length(unique(d.inaccurate.removed$ID.true))
+
+
+# Second, remove all inaccurate trials
+orig <- nrow(d.inaccurate.removed)
+d.inaccurate.removed <- d.inaccurate.removed %>% 
+  filter(Accuracy == 1)
+nrow(d.inaccurate.removed)/orig*100
+
+
+# Third, Remove subjects with ReactionTime higher than 3x IQR
+summary(d.inaccurate.removed$LogReactionTime)
+  #  Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+  # 6.924   7.328   7.436   7.479   7.579  10.008 
+range(d.inaccurate.removed$LogReactionTime)
+
+hist(d.inaccurate.removed$LogReactionTime, breaks=100, col="lightblue", xlab="LogReactionTime (ms)",
+        main="Histogram with Normal Curve")
+
+quantile(d.inaccurate.removed$LogReactionTime, na.rm = TRUE)
+IQR(d.inaccurate.removed$LogReactionTime, na.rm = TRUE)*3 # 0.7526289
+cutoff.high <- quantile(d.inaccurate.removed$LogReactionTime, na.rm = TRUE)[4] + IQR(d.inaccurate.removed$LogReactionTime, na.rm = TRUE)*3 # 8.419261
+cutoff.low <- quantile(d.inaccurate.removed$LogReactionTime, na.rm = TRUE)[2] - IQR(d.inaccurate.removed$LogReactionTime, na.rm = TRUE)*3# 6.5088838.419261
+
+
+# remove subjects with ReactionTime higher than 3 x IQR
+df.outliers.removed <- subset(d.inaccurate.removed, (d.inaccurate.removed$LogReactionTime > cutoff.low) & (d.inaccurate.removed$LogReactionTime < cutoff.high))
+
+hist(df.outliers.removed$LogReactionTime, breaks=100, col="lightblue", xlab="LogReactionTime (ms)",
+        main="Histogram with Normal Curve")
+
+```
+
+
+```{r}
+range(df.outliers.removed$ReactionTime[df.outliers.removed$Experiment == "Ex4: Syntactic"])
+
+# Identify the rows matching the condition
+subset_rows <- df.outliers.removed$Experiment == "Ex4: Syntactic"
+
+# Find the index of the maximum ReactionTime within those rows
+max_index <- which.max(df.outliers.removed$ReactionTime[subset_rows])
+
+# Get the actual row number in the original dataframe
+row_to_remove <- which(subset_rows)[max_index]
+
+# Remove the row
+df.outliers.removed <- df.outliers.removed[-row_to_remove, ]
+
+range(df.outliers.removed$LogReactionTime[testt$Experiment == "Ex4: Syntactic"])
+
+ggplot(testt, aes(LogReactionTime, fill=Task)) +
+  geom_density(alpha = .5) +
+  facet_wrap(~Experiment)
+
+```
+
+
+
+## Summary Stats
+```{r}
+agr <- d.inaccurate.removed %>% 
+  group_by(Experiment,Task) %>% 
+  summarize(MeanRT = mean(ReactionTime),
+            SD = sd(ReactionTime),
+            MeanLogRT = mean(LogReactionTime))
+print(agr)
+```
+
+
+
+# ReactionTime by Task
+```{r}
+
+agr <- df.outliers.removed %>%
+    group_by(Experiment,Task,Word,Category) %>%
+    summarize(MeanReactionTime = mean(ReactionTime), 
+              CILow = ci.low(ReactionTime), 
+              CIHigh = ci.high(ReactionTime)) %>%
+    mutate(YMin = MeanReactionTime - CILow, 
+           YMax = MeanReactionTime + CIHigh)
+
+agr$Task <- ifelse(agr$Task == "Valence", "Valence", "Conceptual")
+agr$Task <- factor(agr$Task, levels = c("Conceptual","Valence"))
+
+ggplot(agr, aes(x=Experiment, y=MeanReactionTime,fill=Task)) + 
+    geom_violin(trim=FALSE,alpha=.4) +
+    geom_jitter(shape=16, position=position_jitter(0.2)) +
+    theme(
+      legend.position = "top",
+      legend.direction = "horizontal",
+      legend.title = element_text(size = 10),
+      legend.text = element_text(size = 9)
+    )
+
+ggsave("../graphs/total_rt.pdf",width = 5, height = 3)
+```
+
+```{r}
+agr <- df.outliers.removed %>%
+    group_by(Experiment,Task,Word) %>%
+    summarize(MeanReactionTime = mean(ReactionTime), 
+              CILow = ci.low(ReactionTime), 
+              CIHigh = ci.high(ReactionTime)) %>%
+    mutate(YMin = MeanReactionTime - CILow, 
+           YMax = MeanReactionTime + CIHigh)
+
+agr$Task <- ifelse(agr$Task == "Valence", "Valence", "Conceptual")
+agr$Task <- factor(agr$Task, levels = c("Conceptual","Valence"))
+
+# Set dodge width to match violin grouping
+dodge_width <- 0.9
+
+ggplot(agr, aes(x = Experiment, y = MeanReactionTime, fill = Task)) + 
+  geom_violin(trim = FALSE, alpha = 0.4, position = position_dodge(width = dodge_width)) +
+
+  # Add mean point with matching dodge
+  stat_summary(fun = mean,
+               geom = "point",
+               shape = 23,
+               size = 3,
+               position = position_dodge(width = dodge_width)) +
+  
+  stat_summary(fun = median,
+                geom = "crossbar",
+                width = 0.3, 
+                linewidth = 0.2,
+                position = position_dodge(width = dodge_width)) +
+  
+  labs(y = "Mean Reaction Time", x = "Experiment") +
+  theme(text = element_text(family = "Helvetica")) +
+  # theme(axis.text.x = element_text(angle = 10, hjust = 1))
+  theme(
+    legend.position = "top",
+    legend.direction = "horizontal",
+    axis.text.x = element_text(angle = 10, hjust = .5, margin = margin(t = 10)),
+    plot.margin = margin(10, 20, 20, 10)  # top, right, bottom, left (in pts)
+
+  ) 
+
+
+
+ggsave("../graphs/total_rt_paper2.jpg",width = 6, height = 3)
+# ggsave("../graphs/exp1_paper.pdf",width = 8, height = 4)
+```
+
+# RT Concept Acc only
+
+
+## Summary Stats
+```{r}
+agr <- d.inaccurate.removed %>% 
+  filter(Word %in% concept_acc$Word) %>% 
+  group_by(Experiment,Task) %>% 
+  summarize(MeanRT = mean(ReactionTime),
+            SD = sd(ReactionTime),
+            MeanLogRT = mean(LogReactionTime))
+print(agr)
+```
+
+
+```{r}
+# First remove inaccurate participants
+length(unique(d$ID.true))
+inacc.parts <- d %>% 
+  group_by(Experiment,ID.true,Task,Category) %>% 
+  summarise(MeanAccuracy = mean(Accuracy)) %>% 
+  filter(MeanAccuracy < .75)
+# How many participants have Accuracy < .75?
+length(unique(inacc.parts$ID.true))
+# Remove them
+d.inaccurate.removed <- d %>% 
+  anti_join(inacc.parts, by = "ID.true") %>% 
+  filter(Word %in% concept_acc$Word)
+# Sanity check
+length(unique(d.inaccurate.removed$ID.true))
+
+
+# Second, remove all inaccurate trials
+orig <- nrow(d.inaccurate.removed)
+d.inaccurate.removed <- d.inaccurate.removed %>% 
+  filter(Accuracy == 1)
+nrow(d.inaccurate.removed)/orig*100
+
+
+# Third, Remove subjects with ReactionTime higher than 3x IQR
+summary(d.inaccurate.removed$LogReactionTime)
+  #  Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+  # 6.924   7.328   7.436   7.479   7.579  10.008 
+range(d.inaccurate.removed$LogReactionTime)
+
+hist(d.inaccurate.removed$LogReactionTime, breaks=100, col="lightblue", xlab="LogReactionTime (ms)",
+        main="Histogram with Normal Curve")
+
+quantile(d.inaccurate.removed$LogReactionTime, na.rm = TRUE)
+IQR(d.inaccurate.removed$LogReactionTime, na.rm = TRUE)*3 # 0.7526289
+cutoff.high <- quantile(d.inaccurate.removed$LogReactionTime, na.rm = TRUE)[4] + IQR(d.inaccurate.removed$LogReactionTime, na.rm = TRUE)*3 # 8.419261
+cutoff.low <- quantile(d.inaccurate.removed$LogReactionTime, na.rm = TRUE)[2] - IQR(d.inaccurate.removed$LogReactionTime, na.rm = TRUE)*3# 6.5088838.419261
+
+
+# remove subjects with ReactionTime higher than 3 x IQR
+df.outliers.removed <- subset(d.inaccurate.removed, (d.inaccurate.removed$LogReactionTime > cutoff.low) & (d.inaccurate.removed$LogReactionTime < cutoff.high))
+
+hist(df.outliers.removed$LogReactionTime, breaks=100, col="lightblue", xlab="LogReactionTime (ms)",
+        main="Histogram with Normal Curve")
+
+```
+
+
+```{r}
+
+sub <- d.inaccurate.removed
+
+
+range(sub$ReactionTime[df.outliers.removed$sub == "Ex4: Syntactic"])
+
+# Identify the rows matching the condition
+subset_rows <- sub$Experiment == "Ex4: Syntactic"
+
+# Find the index of the maximum ReactionTime within those rows
+max_index <- which.max(sub$ReactionTime[subset_rows])
+
+# Get the actual row number in the original dataframe
+row_to_remove <- which(subset_rows)[max_index]
+
+# Remove the row
+sub <- sub[-row_to_remove, ]
+
+range(sub$LogReactionTime[sub$Experiment == "Ex4: Syntactic"])
+
+ggplot(sub, aes(LogReactionTime, fill=Task)) +
+  geom_density(alpha = .5) +
+  facet_wrap(~Experiment)
+
+```
+
+```{r}
+
+
+ggplot(sub, aes(ReactionTime, fill=Task)) +
+  geom_density(alpha = .5) +
+  facet_wrap(~Experiment)
+
+
+```
+
+
+
+# ReactionTime by Task
+```{r}
+
+agr <- df.outliers.removed %>%
+  # filter(Word %in% concept_acc$Word) %>% 
+    group_by(Experiment,Task,Word,Category) %>%
+    summarize(MeanReactionTime = mean(ReactionTime), 
+              CILow = ci.low(ReactionTime), 
+              CIHigh = ci.high(ReactionTime)) %>%
+    mutate(YMin = MeanReactionTime - CILow, 
+           YMax = MeanReactionTime + CIHigh)
+
+agr$Task <- ifelse(agr$Task == "Valence", "Valence", "Conceptual")
+agr$Task <- factor(agr$Task, levels = c("Conceptual","Valence"))
+
+ggplot(agr, aes(x=Experiment, y=MeanReactionTime,fill=Task)) + 
+    geom_violin(trim=FALSE,alpha=.4) +
+    geom_jitter(shape=16, position=position_jitter(0.2)) +
+    theme(
+      legend.position = "top",
+      legend.direction = "horizontal",
+      legend.title = element_text(size = 10),
+      legend.text = element_text(size = 9)
+    ) +
+  theme(axis.text.x = element_text(angle = 10, hjust = 1))
+
+# ggsave("../graphs/concept_acc_rt.pdf",width = 5, height = 3)
+```
+
+## Model
+```{r}
+dcen <- sub %>% 
+  # filter(Word %in% concept_acc$Word) %>% 
+  # filter(Experiment == "Ex2: Conc-Abs") %>% 
+  mutate(Task = ifelse(Task == "Valence", "Valence", "Conceptual"),
+          Task = factor(Task, levels = c("Valence", "Conceptual"))) %>% 
+  mutate(Word = as.factor(Word),
+         ID.true = as.factor(ID.true),
+         Task = as.factor(Task),
+         Experiment = as.factor(Experiment),
+         cAccuracy = as.numeric(Accuracy)-mean(as.numeric(Accuracy)),
+         cTask = as.numeric(Task)-mean(as.numeric(Task)))
+
+m <- lmer(LogReactionTime ~ cTask*Experiment + (1+cTask|Word) + (1+cTask|ID.true), data = dcen)
+summary(m)
+
+```
+
+
+
+
+
+ 
