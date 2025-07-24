@@ -37,16 +37,16 @@ a <- read_csv("../../01_concreteness/03_adjectives/data/processed.csv")
 a["Category"] <- "Adjs"
 a["Experiment"] <- "Ex1c: Conc-Abs (Adjs)"
 
-a2 <- read_csv("../../06_soc-phys/00_pilot/data/processed.csv")
+a2 <- read_csv("../../03_phys-soc/00_pilot/02_pilot/data/processed.csv")
 a2["Category"] <- "Adjs"
-a2["Experiment"] <- "Ex2b: Phys-Soc (Verbs)"
+a2["Experiment"] <- "Ex2b: Phys-Soc (Adjs)"
 
 v2 <- read_csv("../../02_phys-psych/01_experiment/data/processed.csv")
 v2["Category"] <- "Verbs"
-v2["Experiment"] <- "Ex2a: Phys-Psych (Adjs)"
+v2["Experiment"] <- "Ex2a: Phys-Psych (Verbs)"
 
 
-n2 <- read_csv("../../04_animacy/data/processed.csv")
+n2 <- read_csv("../../04_animacy/01_experiment/data/processed.csv")
 n2["Category"] <- "Nouns"
 n2["Experiment"] <- "Ex3: Animacy (Nouns)"
 
@@ -58,6 +58,7 @@ s["Experiment"] <- "Ex4: Syntactic (N v. V)"
 d <- bind_rows(v,n,a,a2,v2,n2,s)
 
 ```
+
 
 
 # Summary Stats
@@ -98,7 +99,7 @@ ggplot(data = agr, aes(x = Experiment, y = MeanAccuracy, fill = Task)) +
     legend.text = element_text(size = 16)
   )
 
-ggsave("../graphs/total_accuracy.pdf",width = 8, height = 4)
+# ggsave("../graphs/total_accuracy.pdf",width = 8, height = 4)
 ```
 
 ```{r}
@@ -124,7 +125,7 @@ ggplot(data = agr, aes(x = Experiment, y = MeanAccuracy, fill = Task)) +
     plot.margin = margin(10, 20, 20, 10)  # top, right, bottom, left (in pts)
   )
 
-ggsave("../graphs/total_acc_paper2.jpg",width = 6, height = 3)
+# ggsave("../graphs/total_acc_paper2.jpg",width = 6, height = 3)
 ```
 
 # Look at the most accurate for each category on EVERYTHING
@@ -178,59 +179,12 @@ ggplot(agr, aes(x = MeanReactionTime, y = MeanAccuracy, color = Task)) +
   )
 
 # ggsave("../graphs/total_accXrt2.pdf",width = 8, height = 4)
-ggsave("../graphs/total_accXrt_paper.jpg",width = 6, height = 3)
+# ggsave("../graphs/total_accXrt_paper.jpg",width = 6, height = 3)
 
 
 ```
 
 
-```{r}
-agr <- df.outliers.removed %>%
-    group_by(Experiment,Task,Word) %>%
-    summarize(MeanReactionTime = mean(ReactionTime), 
-              CILow = ci.low(ReactionTime), 
-              CIHigh = ci.high(ReactionTime)) %>%
-    mutate(YMin = MeanReactionTime - CILow, 
-           YMax = MeanReactionTime + CIHigh)
-
-agr$Task <- ifelse(agr$Task == "Valence", "Valence", "Conceptual")
-agr$Task <- factor(agr$Task, levels = c("Conceptual","Valence"))
-
-# Set dodge width to match violin grouping
-dodge_width <- 0.9
-
-ggplot(agr, aes(x = Experiment, y = MeanReactionTime, fill = Task)) + 
-  geom_violin(trim = FALSE, alpha = 0.4, position = position_dodge(width = dodge_width)) +
-
-  # Add mean point with matching dodge
-  stat_summary(fun = mean,
-               geom = "point",
-               shape = 23,
-               size = 3,
-               position = position_dodge(width = dodge_width)) +
-  
-  stat_summary(fun = median,
-                geom = "crossbar",
-                width = 0.3, 
-                linewidth = 0.2,
-                position = position_dodge(width = dodge_width)) +
-  
-  labs(y = "Mean Reaction Time", x = "Experiment") +
-  theme(text = element_text(family = "Helvetica")) +
-  # theme(axis.text.x = element_text(angle = 10, hjust = 1))
-  theme(
-    legend.position = "top",
-    legend.direction = "horizontal",
-    axis.text.x = element_text(angle = 10, hjust = .5, margin = margin(t = 10)),
-    plot.margin = margin(10, 20, 20, 10)  # top, right, bottom, left (in pts)
-
-  ) 
-
-
-
-ggsave("../graphs/total_rt_paper2.jpg",width = 6, height = 3)
-# ggsave("../graphs/exp1_paper.pdf",width = 8, height = 4)
-```
 
 
 
@@ -431,8 +385,7 @@ ggsave("../graphs/total_rt_paper2.jpg",width = 6, height = 3)
 
 # Reaction Time
 
-
-
+## Remove outliers
 
 ```{r}
 # First remove inaccurate participants
@@ -482,6 +435,19 @@ hist(df.outliers.removed$LogReactionTime, breaks=100, col="lightblue", xlab="Log
 
 
 ```{r}
+agr <- df.outliers.removed %>% 
+  group_by(Experiment,Task) %>% 
+    summarize(MeanReactionTime = mean(ReactionTime), 
+              CILow = ci.low(ReactionTime), 
+              CIHigh = ci.high(ReactionTime)) %>%
+    mutate(YMin = MeanReactionTime - CILow, 
+           YMax = MeanReactionTime + CIHigh)
+
+
+write.csv(agr,"../data/categorization_exp.csv")
+```
+
+```{r}
 range(df.outliers.removed$ReactionTime[df.outliers.removed$Experiment == "Ex4: Syntactic"])
 
 # Identify the rows matching the condition
@@ -516,6 +482,136 @@ agr <- d.inaccurate.removed %>%
 print(agr)
 ```
 
+# Total RT with median and mode stats
+
+```{r}
+agr <- df.outliers.removed %>%
+    group_by(Experiment,Task,Word) %>%
+    summarize(MeanReactionTime = mean(ReactionTime), 
+              CILow = ci.low(ReactionTime), 
+              CIHigh = ci.high(ReactionTime)) %>%
+    mutate(YMin = MeanReactionTime - CILow, 
+           YMax = MeanReactionTime + CIHigh)
+
+agr$Task <- ifelse(agr$Task == "Valence", "Valence", "Conceptual")
+agr$Task <- factor(agr$Task, levels = c("Conceptual","Valence"))
+
+# Set dodge width to match violin grouping
+dodge_width <- 0.9
+
+ggplot(agr, aes(x = Experiment, y = MeanReactionTime, fill = Task)) + 
+  geom_violin(trim = FALSE, alpha = 0.4, position = position_dodge(width = dodge_width)) +
+
+  # Add mean point with matching dodge
+  stat_summary(fun = mean,
+               geom = "point",
+               shape = 23,
+               size = 3,
+               position = position_dodge(width = dodge_width)) +
+  
+  stat_summary(fun = median,
+                geom = "crossbar",
+                width = 0.3, 
+                linewidth = 0.2,
+                position = position_dodge(width = dodge_width)) +
+  
+  labs(y = "Mean Reaction Time", x = "Experiment") +
+  theme(text = element_text(family = "Helvetica")) +
+  # theme(axis.text.x = element_text(angle = 10, hjust = 1))
+  theme(
+    legend.position = "top",
+    legend.direction = "horizontal",
+    axis.text.x = element_text(angle = 10, hjust = .5, margin = margin(t = 10)),
+    plot.margin = margin(10, 20, 20, 10)  # top, right, bottom, left (in pts)
+
+  ) 
+
+
+
+# ggsave("../graphs/total_rt_paper2.jpg",width = 6, height = 3)
+# ggsave("../graphs/exp1_paper.pdf",width = 8, height = 4)
+```
+
+
+# Most accurate RT with median and mode stats
+
+```{r}
+
+
+agr <- df.outliers.removed %>%
+  filter(Word %in% concept_acc$Word) %>% 
+    group_by(Experiment,Task,Word) %>%
+    summarize(MeanReactionTime = mean(ReactionTime), 
+              CILow = ci.low(ReactionTime), 
+              CIHigh = ci.high(ReactionTime)) %>%
+    mutate(YMin = MeanReactionTime - CILow, 
+           YMax = MeanReactionTime + CIHigh)
+
+agr2 <- agr %>%
+    group_by(Experiment,Task) %>%
+    summarize(MeanReactionTime = mean(MeanReactionTime),
+              SD = sd(MeanReactionTime))
+print(agr2)
+
+agr$Task <- ifelse(agr$Task == "Valence", "Valence", "Conceptual")
+agr$Task <- factor(agr$Task, levels = c("Conceptual","Valence"))
+
+# Set dodge width to match violin grouping
+dodge_width <- 0.9
+
+ggplot(agr, aes(x = Experiment, y = MeanReactionTime, fill = Task)) + 
+  geom_violin(trim = FALSE, alpha = 0.4, position = position_dodge(width = dodge_width)) +
+
+  # Add mean point with matching dodge
+  stat_summary(fun = mean,
+               geom = "point",
+               shape = 23,
+               size = 2,
+               position = position_dodge(width = dodge_width)) +
+  
+  stat_summary(fun = median,
+                geom = "crossbar",
+                width = 0.2, 
+                linewidth = 0.1,
+                position = position_dodge(width = dodge_width)) +
+  
+  labs(y = "Mean Reaction Time", x = "Experiment") +
+  theme(text = element_text(family = "Helvetica")) +
+  # theme(axis.text.x = element_text(angle = 10, hjust = 1))
+  theme(
+    legend.position = "top",
+    legend.direction = "horizontal",
+    axis.text.x = element_text(angle = 10, hjust = .5, margin = margin(t = 10)),
+    plot.margin = margin(10, 20, 20, 10)  # top, right, bottom, left (in pts)
+
+  ) 
+
+
+ggsave("../graphs/most_acc_rt_paper2.jpg",width = 6, height = 3)
+# ggsave("../graphs/exp1_paper.pdf",width = 8, height = 4)
+```
+
+```{r}
+library(emmeans)
+
+most_acc <- df.outliers.removed %>% 
+  filter(Word %in% concept_acc$Word)
+
+most_acc$Task <- ifelse(most_acc$Task == "Valence", "Valence", "Conceptual")
+most_acc$Task <- factor(most_acc$Task, levels = c("Conceptual","Valence"))
+
+model <- lmer(LogReactionTime ~ Task * Experiment + 
+              (1 | ID.true), data = most_acc)
+summary(model)
+# Create estimated marginal means
+em <- emmeans(model, ~ Task | Experiment)
+
+# Pairwise comparisons
+pairs(em)
+
+pairs(em, adjust = "tukey")
+
+```
 
 
 # ReactionTime by Task
