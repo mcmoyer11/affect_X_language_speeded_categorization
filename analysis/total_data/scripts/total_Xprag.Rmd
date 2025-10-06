@@ -53,15 +53,19 @@ n2["Experiment"] <- "Ex3: Animacy (Nouns)"
 s <- read_csv("../../05_syntactic/01_experiment/data/processed.csv")
 s["Experiment"] <- "Ex4: Syntactic (N v. V)"
 
-
-
 d <- bind_rows(v,n,a,a2,v2,n2,s)
 names(d)
 
 # words <- unique(d[,c("Word","Experiment")])
 # write.csv(words,"../data/total_words.csv")
+
 ```
 
+```{r, run=FALSE, eval=FALSE, echo=FALSE}
+sub <- d[,c("Word","ID.true","Experiment","Task","LogReactionTime","Response","Accuracy","ConcValCombo")]
+sub$ExperimentType <- "Categorization"
+write.csv(sub,"../data/categorization.csv")
+```
 
 
 # Summary Stats
@@ -387,6 +391,9 @@ df.outliers.removed <- subset(d.inaccurate.removed, (d.inaccurate.removed$LogRea
 hist(df.outliers.removed$LogReactionTime, breaks=100, col="lightblue", xlab="LogReactionTime (ms)",
         main="Histogram with Normal Curve")
 
+# write_csv(df.outliers.removed,"../data/categorization.csv")
+nrow(df.outliers.removed)
+
 ```
 
 
@@ -398,9 +405,9 @@ agr <- df.outliers.removed %>%
               CIHigh = ci.high(ReactionTime)) %>%
     mutate(YMin = MeanReactionTime - CILow, 
            YMax = MeanReactionTime + CIHigh)
+nrow(agr)
 
-
-write.csv(agr,"../data/categorization_exp.csv")
+# write.csv(agr,"../data/categorization_agg.csv")
 ```
 
 
