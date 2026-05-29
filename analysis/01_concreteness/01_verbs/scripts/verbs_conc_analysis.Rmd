@@ -1,8 +1,8 @@
 ---
 title: "Verbs Conc-Abs: Analysis"
-author: "morgan moyer"
+author: "author"
 date: "`r Sys.Date()`"
-output: pdf_document
+output: html_document
 ---
 
 
@@ -16,10 +16,10 @@ library(stringr)
 library(textstem)
 library(tidyverse)
 theme_set(theme_bw())
-cbPalette <- c("#56B4E9", "#D55E00", "#009E73","#999999", "#E69F00","#009E73","#56B4E9", "#D55E00", "#009E73","#999999", "#E69F00","#009E73","#56B4E9", "#D55E00", "#009E73","#999999", "#E69F00","#009E73","#56B4E9", "#D55E00", "#009E73","#999999", "#E69F00","#009E73")
+cbPalette <- c("#56B4E9", "#D55E00", "#009E73","#999999", "#E69F00")
 this.dir <- dirname(rstudioapi::getSourceEditorContext()$path)
 setwd(this.dir)
-source("../../../../helpers.R")
+source("../../../helpers.R")
 
 d <- read.csv("../data/processed.csv")
 ```
@@ -64,7 +64,7 @@ ggplot(agr, aes(x = MeanReactionTime, y = MeanAccuracy)) +
   geom_text(aes(label = Word, color = Task), vjust = -0.5, hjust = 1.5) +
   # guides(legend = "none")
   theme(legend.position = "none")  # Remove the legend
-ggsave("../graphs/exp1b_accXrt.pdf",width = 5, height = 3)
+# ggsave("../graphs/exp1b_accXrt.pdf",width = 5, height = 3)
 
 ```
 
@@ -115,7 +115,7 @@ ggplot(data=agr, aes(x=Word,y=MeanAccuracy, fill = Task)) +
   geom_bar(position=dodge,stat="identity") + 
   geom_errorbar(aes(ymin=YMin,ymax=YMax),width=.25,position=position_dodge(0.9)) +
   theme(axis.text.x = element_text(angle = 15, hjust = 1))
-ggsave("../graphs/exp1_mostacc_verbs_acc.pdf",width = 6, height = 3)
+# ggsave("../graphs/exp1_mostacc_verbs_acc.pdf",width = 6, height = 3)
 ```
 
 ```{r}
@@ -135,7 +135,7 @@ ggplot(data=agr, aes(x=Word,y=MeanReactionTime, fill = Task)) +
   geom_errorbar(aes(ymin=YMin,ymax=YMax),width=.25,position=position_dodge(0.9))+
   theme(axis.text.x = element_text(angle = 15, hjust = 1))
 
-ggsave("../graphs/exp1_mostacc_verbs_rt.pdf",width = 6, height = 3)
+# ggsave("../graphs/exp1_mostacc_verbs_rt.pdf",width = 6, height = 3)
 ```
 
 
@@ -144,7 +144,7 @@ ggsave("../graphs/exp1_mostacc_verbs_rt.pdf",width = 6, height = 3)
 agr <- d %>% 
   # mutate(Task = ifelse(Task == "Valence", "Valence", "Conceptual"),
   #         Task = factor(Task, levels = c("Valence", "Conceptual"))) %>% 
-  filter(Word %in% concrete_accuracy_tot$Word) %>% 
+  filter(Word %in% concrete_accuracy$Word) %>% 
   filter(Word != "obsess") %>% 
   group_by(Word,Task) %>%
   summarize(MeanAccuracy = mean(Accuracy),
@@ -161,7 +161,7 @@ ggplot(agr, aes(x = MeanReactionTime, y = MeanAccuracy, color = Task)) +
     # legend.text = element_text(size = 5)
   )
 
-ggsave("../graphs/total_accXrt.pdf",width = 8, height = 4)
+# ggsave("../graphs/total_accXrt.pdf",width = 8, height = 4)
 ```
 
 
@@ -283,7 +283,7 @@ center = df_factors %>%
          )
   
 aggregate(LogReactionTime ~ Task, data = center, mean)
-tapply(cTask, center$Task, mean)
+# tapply(cTask, center$Task, mean)
 
 
 ```

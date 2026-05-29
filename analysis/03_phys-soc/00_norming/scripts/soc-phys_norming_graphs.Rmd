@@ -1,8 +1,8 @@
 ---
 title: "Adjs Soc-Phys Norming: Graphs"
-author: "morgan moyer"
+author: "author"
 date: "`r Sys.Date()`"
-output: pdf_document
+output: html_document
 ---
 
 

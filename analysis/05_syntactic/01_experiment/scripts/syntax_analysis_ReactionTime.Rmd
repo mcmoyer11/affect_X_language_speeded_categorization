@@ -1,8 +1,8 @@
 ---
 title: "Syntactic: Analysis"
-author: "morgan moyer"
+author: "author"
 date: "`r Sys.Date()`"
-output: pdf_document
+output: html_document
 ---
 
 
@@ -16,7 +16,7 @@ library(stringr)
 library(textstem)
 library(tidyverse)
 theme_set(theme_bw())
-cbPalette <- c("#56B4E9", "#D55E00", "#009E73","#999999", "#E69F00","#009E73","#56B4E9", "#D55E00", "#009E73","#999999", "#E69F00","#009E73","#56B4E9", "#D55E00", "#009E73","#999999", "#E69F00","#009E73","#56B4E9", "#D55E00", "#009E73","#999999", "#E69F00","#009E73")
+cbPalette <- c("#56B4E9", "#D55E00", "#009E73","#999999", "#E69F00")
 this.dir <- dirname(rstudioapi::getSourceEditorContext()$path)
 setwd(this.dir)
 source("../../../helpers.R")

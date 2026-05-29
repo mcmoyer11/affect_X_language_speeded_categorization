@@ -1,6 +1,6 @@
 ---
 title: 'Verbs Conc-Abs: preprocessing'
-author: "morgan moyer"
+author: ""
 date: "`r Sys.Date()`"
 output: html_document
 ---

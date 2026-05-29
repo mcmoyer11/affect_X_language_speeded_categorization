@@ -1,6 +1,6 @@
 ---
 title: "Everything"
-author: "morgan moyer"
+author: "author"
 date: "`r Sys.Date()`"
 output: html_document
 ---
@@ -37,7 +37,7 @@ a <- read_csv("../../01_concreteness/03_adjectives/data/processed.csv")
 a["Category"] <- "Adjs"
 a["Experiment"] <- "Ex1c: Conc-Abs (Adjs)"
 
-a2 <- read_csv("../../06_soc-phys/00_pilot/data/processed.csv")
+a2 <- read_csv("../../03_phys-soc/01_experiment/data/processed.csv")
 a2["Category"] <- "Adjs"
 a2["Experiment"] <- "Ex2b: Phys-Soc (Verbs)"
 
@@ -46,7 +46,7 @@ v2["Category"] <- "Verbs"
 v2["Experiment"] <- "Ex2a: Phys-Psych (Adjs)"
 
 
-n2 <- read_csv("../../04_animacy/data/processed.csv")
+n2 <- read_csv("../../04_animacy/01_experiment/data/processed.csv")
 n2["Category"] <- "Nouns"
 n2["Experiment"] <- "Ex3: Animacy (Nouns)"
 

@@ -19,7 +19,7 @@ theme_set(theme_bw())
 cbPalette <- c("#56B4E9", "#D55E00", "#009E73","#999999", "#E69F00","#009E73","#56B4E9", "#D55E00", "#009E73","#999999", "#E69F00","#009E73","#56B4E9", "#D55E00", "#009E73","#999999", "#E69F00","#009E73","#56B4E9", "#D55E00", "#009E73","#999999", "#E69F00","#009E73")
 this.dir <- dirname(rstudioapi::getSourceEditorContext()$path)
 setwd(this.dir)
-source("../../../helpers.R")
+source("../../../../../helpers.R")
 
 d <- read.csv("../data/processed.csv")
 
@@ -274,7 +274,27 @@ ggplot(data=agr, aes(x=Task,y=MeanAccuracy,fill=BlockOrder)) +
  
 ```
 
+# Sandwich
+```{r}
+sand <- d %>% 
+  filter(Task == "Valence") %>% 
+  # filter(Word %in% conc$Word) %>% 
+  group_by(Word) %>%
+  mutate(Response.n = as.numeric(factor(Response, levels = c("negative", "positive"))) - 1) %>% 
+  summarize(PropPositive = mean(Response.n),
+            Var = sd(Response.n)) %>% 
+  filter(Word == "sandwich") 
 
+print(sand)
+
+sandd <- d %>% 
+  filter((Task == "Valence") & (Word == "sandwich")) %>% 
+  group_by(Response) 
+
+
+ggplot(sandd, aes(Response, fill=Task)) +
+  geom_density(alpha = .5)
+```
 
 
 
