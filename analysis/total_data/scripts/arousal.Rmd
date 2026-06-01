@@ -16,7 +16,7 @@ library(textstem)
 library(tidyverse)
 library(kableExtra)
 library(emmeans)
-# library(ggefxfects)
+library(ggeffects)
 theme_set(theme_bw())
 library(ggrepel)
 cbPalette <- c("#56B4E9", "#D55E00", "#009E73","#999999", "#E69F00")
@@ -288,4 +288,11 @@ contrast(emt, interaction = "pairwise", by = NULL)
 emmip(m_arousal, Experiment * Task ~ A.Mean.Sum, cov.reduce = range)
 ```
 
+```{r}
+emmip(m_arousal, Experiment ~ A.Mean.Sum | Task, cov.reduce = range)
+```
+
+```{r}
+emmip(m_arousal, Task ~ A.Mean.Sum | Experiment, cov.reduce = range)
+```
 
