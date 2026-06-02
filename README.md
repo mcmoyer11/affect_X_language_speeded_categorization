@@ -16,8 +16,8 @@ All data and analysis scripts. R Markdown files.
 
 ## OSF Preregistration
 
-The OSF preregistration can be found here: https://osf.io/3rt46/overview?view_only=25dbb901d1744e318b66a5b16239ed24.
+The OSF preregistration can be found [here(]https://osf.io/3rt46/overview?view_only=25dbb901d1744e318b66a5b16239ed24).
 
 ## Sister Repo
 
-The sister Repo for this project is here: https://anonymous.4open.science/r/affect_X_language_similairty_judgement-B07C/README.md.
+The sister Repo for this project is [here(]https://anonymous.4open.science/r/affect_X_language_similairty_judgement-B07C/README.md).
