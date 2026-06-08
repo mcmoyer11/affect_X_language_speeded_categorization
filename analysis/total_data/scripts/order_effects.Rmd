@@ -71,12 +71,15 @@ d <- d %>%
 
 ```
 
+# Create repetition variable
 ```{r}
 d <- d %>%
   group_by(Experiment,ID.true, Task, Word) %>%
   mutate(Repetition = row_number()) %>%
   ungroup()
+```
 
+```{r}
 table(d$Repetition)
 
 sub <- d %>% 
@@ -231,8 +234,6 @@ anova(m2,m3)
 # Q2: Do negative ratings decrease over the course of the experiment
 
 ```{r}
-
-View(d.fil)
 val <- d.fil %>% 
   # filter((Task == "Valence")) %>% 
   # filter(Word %in% conc$Word) %>% 
@@ -364,4 +365,154 @@ ggplot(data=val, aes(x=reorder(Word,PropPositive),y=PropPositive)) +
 ```
 
 
+# Looking only at the first observation of each word
 
+## Subset the data
+
+### 1. first only the task block shown first
+```{r}
+table(d$BlockOrder)
+
+first.block.only <- d %>% 
+  filter(
+    # TruthCond First Order
+    ((BlockOrder == "AV") & (Task == "TruthCond")) |
+    ((BlockOrder == "CV") & (Task == "TruthCond")) |
+    ((BlockOrder == "PV") & (Task == "TruthCond")) |
+    ((BlockOrder == "SV") & (Task == "TruthCond")) |
+      
+    # Valence First Oder
+    ((BlockOrder == "VA") & (Task == "Valence")) |
+    ((BlockOrder == "VC") & (Task == "Valence")) |
+    ((BlockOrder == "VP") & (Task == "Valence")) |
+    ((BlockOrder == "VS") & (Task == "Valence"))
+  )
+
+# halves the data
+nrow(first.block.only)/nrow(d)*100
+```
+
+### 2. Only first observation of a given word
+
+```{r}
+first.word.block.only <- first.block.only %>% 
+  filter(Repetition == 1)
+
+nrow(first.word.block.only)/nrow(d)*100
+
+table(first.word.block.only$Experiment)
+```
+
+### 3. Look at the effects
+
+Remove outliers
+
+```{r}
+# First remove inaccurate participants
+length(unique(first.word.block.only$ID.true))
+inacc.parts <- first.word.block.only %>% 
+  group_by(Experiment,ID.true,Task,Category) %>% 
+  summarise(MeanAccuracy = mean(Accuracy)) %>% 
+  filter(MeanAccuracy < .75)
+# How many participants have Accuracy < .75?
+length(unique(inacc.parts$ID.true))
+# Remove them
+d.inaccurate.removed <- first.word.block.only %>% 
+  anti_join(inacc.parts, by = "ID.true")
+# Sanity check
+length(unique(d.inaccurate.removed$ID.true))
+
+
+# Second, remove all inaccurate trials
+orig <- nrow(d.inaccurate.removed)
+d.inaccurate.removed <- d.inaccurate.removed %>% 
+  filter(Accuracy == 1)
+nrow(d.inaccurate.removed)/orig*100
+
+
+# Third, Remove subjects with ReactionTime higher than 3x IQR
+summary(d.inaccurate.removed$LogReactionTime)
+  #  Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+  # 6.924   7.328   7.436   7.479   7.579  10.008 
+range(d.inaccurate.removed$LogReactionTime)
+
+hist(d.inaccurate.removed$LogReactionTime, breaks=100, col="lightblue", xlab="LogReactionTime (ms)",
+        main="Histogram with Normal Curve")
+
+quantile(d.inaccurate.removed$LogReactionTime, na.rm = TRUE)
+IQR(d.inaccurate.removed$LogReactionTime, na.rm = TRUE)*3 # 0.7526289
+cutoff.high <- quantile(d.inaccurate.removed$LogReactionTime, na.rm = TRUE)[4] + IQR(d.inaccurate.removed$LogReactionTime, na.rm = TRUE)*3 # 8.419261
+cutoff.low <- quantile(d.inaccurate.removed$LogReactionTime, na.rm = TRUE)[2] - IQR(d.inaccurate.removed$LogReactionTime, na.rm = TRUE)*3# 6.5088838.419261
+
+
+# remove subjects with ReactionTime higher than 3 x IQR
+df.outliers.removed <- subset(d.inaccurate.removed, (d.inaccurate.removed$LogReactionTime > cutoff.low) & (d.inaccurate.removed$LogReactionTime < cutoff.high))
+
+hist(df.outliers.removed$LogReactionTime, breaks=100, col="lightblue", xlab="LogReactionTime (ms)",
+        main="Histogram with Normal Curve")
+
+# write_csv(df.outliers.removed,"../data/categorization.csv")
+nrow(df.outliers.removed)
+
+length(unique(first.word.block.only$ID.true)) - length(unique(df.outliers.removed$ID.true))
+
+# What percentage of data lost?
+(1 - nrow(df.outliers.removed)/nrow(first.word.block.only)) *100
+
+```
+
+
+
+### Total RT with median and mode stats
+
+```{r}
+agr <- df.outliers.removed %>%
+    group_by(Experiment,Task,Word) %>%
+    summarize(MeanReactionTime = mean(ReactionTime), 
+              CILow = ci.low(ReactionTime), 
+              CIHigh = ci.high(ReactionTime)) %>%
+    mutate(YMin = MeanReactionTime - CILow, 
+           YMax = MeanReactionTime + CIHigh)
+
+# Set dodge width to match violin grouping
+dodge_width <- 0.9
+
+ggplot(agr, aes(x = Experiment, y = MeanReactionTime, fill = Task)) + 
+  geom_violin(trim = FALSE, alpha = 0.4, position = position_dodge(width = dodge_width)) +
+
+  # Add mean point with matching dodge
+  stat_summary(fun = mean,
+               geom = "point",
+               shape = 23,
+               size = 2,
+               position = position_dodge(width = dodge_width)) +
+  
+  stat_summary(fun = median,
+                geom = "crossbar",
+                width = 0.3, 
+                linewidth = 0.2,
+                position = position_dodge(width = dodge_width)) +
+  
+  labs(y = "Mean Reaction Time", x = "Experiment") +
+  scale_x_discrete(labels = function(x) str_wrap(x, width = 10)) +
+  theme(
+    legend.position = "top",
+    legend.direction = "horizontal",
+    axis.title.x=element_blank(),
+    text = element_text(family = "Helvetica"),
+    axis.title.y = element_text(size = 16),     # x-axis title
+    axis.text.y  = element_text(size = 12),     # y-axis ticks
+    axis.text.x  = element_text(size = 12),     # x-axis ticks
+  )
+
+```
+
+```{r}
+names(first.word.block.only)
+m.first <- lmer(log(ReactionTime) ~ Task +
+                (1 | ID.true) +
+                (1 + Task | Word),
+                data = df.outliers.removed)
+
+summary(m.first)
+```
