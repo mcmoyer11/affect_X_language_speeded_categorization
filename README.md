@@ -18,9 +18,9 @@ All corpus-based analysis, including stimuli (word pair) generation and vector s
 
 All data and analysis scripts. R Markdown files.
 
-## OSF Preregistration
+## OSF
 
-The OSF preregistration can be found [here](https://osf.io/3rt46/overview?view_only=25dbb901d1744e318b66a5b16239ed24).
+The OSF can be found [here](https://osf.io/3rt46/overview?view_only=25dbb901d1744e318b66a5b16239ed24). Please note that they are NOT anonymized!
 
 ## Sister Repo
 
