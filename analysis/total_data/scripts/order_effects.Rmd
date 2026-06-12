@@ -86,12 +86,8 @@ sub <- d %>%
   filter(Repetition >= 4)
 
 table(sub$Experiment)
-View(sub)
-
 subb <- d %>% 
   filter(Experiment %in% c("Ex1b: Conc-Abs (Nouns)"))
-
-
 table(subb$Word,subb$Repetition, subb$Task)
 
 subbb <- subb %>% 
@@ -245,26 +241,12 @@ val <- d.fil %>%
   mutate(YMin = PropPositive - CILow, 
          YMax = PropPositive + CIHigh)
 
-
-dodge = position_dodge(.9)
-ggplot(data=val, aes(x=reorder(Word,PropPositive),y=PropPositive,fill=Experiment)) +
-  geom_bar(position=dodge,stat="identity",color = "black") +
-  geom_errorbar(aes(ymin=YMin,ymax=YMax),width=.25,position=position_dodge(0.9)) +
-  # facet_wrap(~Task) +
-  ylim(0,1) +
-  labs(x = "Word") +
-  theme(
-    legend.position = "top",
-    legend.direction = "horizontal", 
-    axis.text.x = element_text(angle = 90, hjust  = 1))
-
-
 ```
 
 
 ```{r}
 d.fil$Response.n <- ifelse(d.fil$Response == "positive", 1, 0)
-table(d.fil$Task,d.fil*Repetition)
+table(d.fil$Task,d.fil$Repetition)
 
 sum <- d.fil %>%
   group_by(Experiment, Repetition) %>%
