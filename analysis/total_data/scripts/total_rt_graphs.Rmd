@@ -78,56 +78,34 @@ length(unique(a2$ID.true))
 ## Remove outliers
 
 ```{r}
-# First remove inaccurate participants
-length(unique(d$ID.true))
+# 1. Remove inaccurate participants (< 75% mean accuracy)
 inacc.parts <- d %>% 
-  group_by(Experiment,ID.true,Task,Category) %>% 
-  summarise(MeanAccuracy = mean(Accuracy)) %>% 
+  group_by(Experiment, ID.true, Task, Category) %>% 
+  summarise(MeanAccuracy = mean(Accuracy), .groups = "drop") %>% 
   filter(MeanAccuracy < .75)
-# How many participants have Accuracy < .75?
-length(unique(inacc.parts$ID.true))
-# Remove them
+
 d.inaccurate.removed <- d %>% 
   anti_join(inacc.parts, by = "ID.true")
-# Sanity check
-length(unique(d.inaccurate.removed$ID.true))
 
-
-# Second, remove all inaccurate trials
-orig <- nrow(d.inaccurate.removed)
+# 2. Filter for accurate trials only
 d.inaccurate.removed <- d.inaccurate.removed %>% 
   filter(Accuracy == 1)
-nrow(d.inaccurate.removed)/orig*100
 
+# 3. Trim reaction time outliers beyond 3x IQR range
+cutoff.high <- quantile(d.inaccurate.removed$LogReactionTime, na.rm = TRUE)[4] + 
+               (IQR(d.inaccurate.removed$LogReactionTime, na.rm = TRUE) * 3)
 
-# Third, Remove subjects with ReactionTime higher than 3x IQR
-summary(d.inaccurate.removed$LogReactionTime)
-  #  Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
-  # 6.924   7.328   7.436   7.479   7.579  10.008 
-range(d.inaccurate.removed$LogReactionTime)
+cutoff.low <- quantile(d.inaccurate.removed$LogReactionTime, na.rm = TRUE)[2] - 
+              (IQR(d.inaccurate.removed$LogReactionTime, na.rm = TRUE) * 3)
 
-hist(d.inaccurate.removed$LogReactionTime, breaks=100, col="lightblue", xlab="LogReactionTime (ms)",
-        main="Histogram with Normal Curve")
+df.outliers.removed <- subset(
+  d.inaccurate.removed, 
+  (LogReactionTime > cutoff.low) & (LogReactionTime < cutoff.high)
+)
 
-quantile(d.inaccurate.removed$LogReactionTime, na.rm = TRUE)
-IQR(d.inaccurate.removed$LogReactionTime, na.rm = TRUE)*3 # 0.7526289
-cutoff.high <- quantile(d.inaccurate.removed$LogReactionTime, na.rm = TRUE)[4] + IQR(d.inaccurate.removed$LogReactionTime, na.rm = TRUE)*3 # 8.419261
-cutoff.low <- quantile(d.inaccurate.removed$LogReactionTime, na.rm = TRUE)[2] - IQR(d.inaccurate.removed$LogReactionTime, na.rm = TRUE)*3# 6.5088838.419261
-
-
-# remove subjects with ReactionTime higher than 3 x IQR
-df.outliers.removed <- subset(d.inaccurate.removed, (d.inaccurate.removed$LogReactionTime > cutoff.low) & (d.inaccurate.removed$LogReactionTime < cutoff.high))
-
-hist(df.outliers.removed$LogReactionTime, breaks=100, col="lightblue", xlab="LogReactionTime (ms)",
-        main="Histogram with Normal Curve")
-
-# write_csv(df.outliers.removed,"../data/categorization.csv")
-nrow(df.outliers.removed)
-
-length(unique(d$ID.true)) - length(unique(df.outliers.removed$ID.true))
-
-# What percentage of data lost?
-(1 - nrow(df.outliers.removed)/nrow(d)) *100
+# Distribution plots
+hist(df.outliers.removed$LogReactionTime, breaks = 100, col = "lightblue", 
+     xlab = "LogReactionTime (ms)", main = "Histogram after Outlier Removal")
 
 ```
 
@@ -143,6 +121,20 @@ agr <- df.outliers.removed %>%
 nrow(agr)
 print(agr)
 # write.csv(agr,"../data/categorization_agg.csv")
+```
+
+```{r}
+agr_summary <- df.outliers.removed %>% 
+  group_by(Experiment, Task) %>% 
+  summarize(
+    MeanRT = mean(ReactionTime),
+    SD = sd(ReactionTime),
+    MeanLogRT = mean(LogReactionTime),
+    .groups = "drop"
+  )
+
+kable(agr_summary, caption = "Summary Statistics by Experiment and Task") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"))
 ```
 
 
